@@ -1,0 +1,489 @@
+---
+title: "Statistics CA I (B9DA101)"
+author: "Nikita Mane (10575451), Pavan Gaikwad (10575449), Ayobami Adeolu Adeyeye (10578282)"
+date: "March 2021"
+output: 
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("corrplot")
+library("data.table")
+library("tidyverse")
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+library(data.table)
+library(tidyverse)
+
+dataset <- fread(file.choose())
+
+# dataset <- dataset[1:50000]
+
+#ramdomizes the dataset
+set.seed(123) 
+dataset <- dataset[sample(1:nrow(dataset), 2000,
+   replace=FALSE),]
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+
+#Converting character to categorical variables
+dataset$continent <- as.factor(dataset$continent)
+dataset$Country <- as.factor(dataset$Country)
+dataset$`Item Type` <- as.factor(dataset$`Item Type`)
+dataset$`Sales Channel` <- as.factor(dataset$`Sales Channel`)
+dataset$`Order Priority` <- as.factor(dataset$`Order Priority`)
+
+
+#COnverting Order and ship date to date type
+library(lubridate)
+dataset$`Order Date` <- mdy(dataset$`Order Date`)
+dataset$`Ship Date` <- mdy(dataset$`Ship Date`)
+
+```
+
+## Introduction
+Dataset illustrates trading of 12 varieties of products sold across 7 Continents within its 185 Countries.  It differentiates two channels, online and offline sales, defining its Order Priority, Units Sold, and Price. Also, it demonstrates the Total Revenue furthermore Total profit.   
+
+
+### Data Summary
+We chose `2,000` rows at random from a dataset with `50,000` rows because we were having trouble exploring the results. The graphs were almost identical, and there were no insights in the graphs.  
+
+**Dimension**  
+```{r}
+dim(dataset)
+
+```
+
+**Variables names**
+We have 14 variables and they're listed below:
+
+```{r}
+
+colnames(dataset)
+
+```
+
+#### Overview    
+
+```{r, echo=FALSE}
+#Summary of dataset
+library(skimr)
+skim(dataset)
+
+```
+
+### **Descriptive Analysis**
+#### Exploratory Data Analysis
+
+Exploratory Data Analysis (EDA) is a data analysis approach/philosophy that uses a range of techniques (mostly graphical) to  
+1. Maximize insight into a data set  
+2. Uncover underlying structure  
+3. Extract important variables  
+4. Detect outliers and anomalies  
+5. Test underlying assumptions  
+6. Develop parsimonious models and
+7. Determine optimal factor settings.  
+
+<br>
+
+The majority of EDA techniques are graphical in nature, with a few quantitative techniques thrown in for good measure. The reason for this strong dependence on graphics is that the key role of EDA is to openly explore, and graphics gives analysts unprecedented power to do so, tempting the data to expose its systemic secrets and always being ready to obtain some fresh, sometimes unexpected, insight into the data. Graphics, in conjunction with our innate pattern-recognition skills, offers, of course, unrivaled capacity for accomplishing this.
+
+```{r}
+library(ggplot2)
+#bar chart for continent, Sales channel
+ggplot(dataset, aes(continent)) + geom_bar(aes(fill=`Sales Channel`)) + coord_flip() + labs(title = 'Number of sales per continent',subtitle='Bar Chart showing Sales Channel count per continent' , x= 'Continent', y = 'Number of purchases by continent' )
+
+```
+
+Above bar chart shows the Sales channel per Continent. North America and Asia give more preference to Online Purchases rather than Offline. While, in other Continents, products are sold equally in each offline and online channel.  
+<br>
+
+```{r, echo=FALSE}
+#Item type vs priority
+
+ggplot(dataset, aes(`Item Type`)) + geom_bar(aes(fill= `Order Priority`)) + coord_flip() + labs(title = 'Number of sales per Item',subtitle='Bar Chart showing Item Per vs order priority' , x= 'Item types', y = 'Count of Order' )
+
+```
+
+Above bar chart illustrates the different Item Types and their Count of Order. The ratio of Order priority for Vegetables, Personal Care, Cereal and Baby food is nearly alike.  
+<br>
+
+```{r}
+#Item type vs sales channel
+ggplot(dataset, aes(`Item Type`)) + geom_bar(aes(fill=`Sales Channel`)) + coord_flip() + labs(title = 'Number of sales per Channel',subtitle='Bar Chart showing Sales Channel count per Item types' , x= 'Item Types', y = 'Number of purchase by Item type' )
+
+
+```
+
+Above Chart demonstrates Item types and their purchase over Sales Channel. Here Snacks, Cosmetics, cereals are purchased in high quantity in offline mode.  Whereas the acquisition of Office Supplies, Fruits, Clothes is high when shopping online. The sales of Vegetables, Personal Care, Meat, Household, Beverages, Baby Food are almost equal in both the type of channel.  
+
+<br>
+
+```{r}
+#Order priority vs sales channel
+ggplot(dataset, aes(`Order Priority`)) + geom_bar(aes(fill=`Sales Channel`)) + coord_flip() + labs(title = 'Number of sales per continent',subtitle='Bar Chart showing Order priority count per Order Sales Channel' , x= 'Order Priority', y = 'Number of sales' )
+
+table(dataset$`Sales Channel`)
+
+```
+
+Among all the 4 Order priorities, H has the lowest sale with an equal offline and online shopping ratio. C seems to have the maximum number of online sales as compared to other priorities.  
+<br>
+
+```{r}
+#Unit sold vs Item type
+ggplot(dataset, aes(`Item Type`,`Units Sold`)) + geom_boxplot() +coord_flip()
+
+```
+
+The above boxplots shows there are no outliers when we compare Item type and number of units sold.  
+<br>
+
+```{r}
+#Scatter plot for TotalCost and Total profit
+ggplot(dataset,aes(`Total Cost`,`Total Profit`)) + geom_jitter(size =1, aes(col=continent))
+
+cor(dataset$`Total Profit`,dataset$`Total Cost`)
+```
+
+The above `Scatter plot` shows there is a strong positive relationship between `Total Profit` and `Total Cost`  with a correlation of $0.79$   
+<br>
+
+
+```{r, tidy=TRUE}
+
+ggplot(dataset, aes(`Total Revenue`,continent)) + geom_col(aes(fill=`Sales Channel`))
+
+```
+
+Above Bar Graph shows the Total Revenue of different Continents. Sub-Saharan Africa and Europe have the highest Revenue bar wherein North America's Revenue is the lowest compared to all the Continents. The Middle East and North America's income bar, Central America and the Caribbean and Asia are the same.  
+
+<br>
+```{r, include=FALSE}
+## selecting numeric data
+nums <- dataset[,c("Units Sold","Unit Price", "Unit Cost", "Total Revenue", "Total Cost","Total Profit" )]
+
+
+```
+
+<br>
+
+## Probability Distributions  
+
+A **discrete probability function**, p(x), is defined mathematically as a function that satisfies the following properties.  
+1. p(x) is the likelihood that x will take a particular value. That is   
+$P[X=x]=p(x)=px$   
+
+2. p(x) is non-negative for all real x.  
+
+3.p(x) adds up to 1 for all possible x values, that is  
+$\sum_{j}p_{j} = 1$
+
+where j denotes all possible x values and pj denotes the likelihood at xj.   
+The fact that 0<=p(x) <=1 is one of the consequences of properties 2 and 3.  
+
+What exactly does this imply? A discrete probability function is one that has a finite number of possible values (not necessarily finite). The non-negative integers, or a subset of the non-negative integers, are commonly used.
+
+Although there is no mathematical requirement that discrete probability functions be specified at integers, this is typically the case in practice. If you flip a coin six times, you can get two or three heads, but not two and a half heads.   
+
+Each discrete value has a probability of occurrence somewhere between zero and one. A discrete function that accepts negative or greater-than-one values is not a probability function. When the odds add up to one, it means that at least one of the values has to happen.  
+
+<br>
+
+A **continuous probability function**, f(x), is defined mathematically as a function that satisfies the following properties.  
+1. The probability that x is between two points a and b is
+$p[a≤x≤b]=∫^b_af(x)dx$   
+
+2. It is non-negative for all real x.  
+
+3. The integral of the probability function is one, that is  
+$∫^∞_{-∞}f(x)dx=1$
+
+<br>
+
+The probability at a single point is always zero since continuous probability functions are defined for an infinite number of points over a continuous interval. Probabilities are estimated over time periods rather than single points. That is, the likelihood for a given interval is defined by the area under the curve between two distinct points.   
+This implies that the probability function's height may be greater than one. The property that the integral must equal one is analogous to the property that the sum of all probabilities must equal one for discrete distributions.  
+
+**The Discrepancy Between Probability Density and Probability Mass Functions**   
+Probability mass functions are used to describe discrete probability functions, while probability density functions are used to describe continuous probability functions. Both discrete and continuous distributions are covered by the word probability functions.  
+
+
+
+```{r, echo=FALSE}
+x <- table(dataset$`Sales Channel`)
+
+```
+
+### Binomial Distribution  
+Binomial Distribution Model is given by: 
+$P (X "successes") = n! / x! (n-x)! px (1-p) (n-x)$   
+
+<br>
+
+In a sequence of replicated experiments, the binomial distribution model is used to determine the likelihood of success of an occurrence with only two possible outcomes.  
+There are two types of sales channels in this dataset: online and offline.   
+1. There are n equivalent trials in the experiment, with n being a finite number.
+
+2. In each trial, there are only two potential outcomes., i.e., each trial is Bernoulli’s trial. We denote one outcome by x (for Online ) and the other by y (for Offline).   
+
+3. The probability of x remains the same from trial to trial. The likelihood of x (Online) is denoted by p and the likelihood of y (Offline) by q (where p+q=1).   
+
+4. All the trials are independent.  
+
+**Example:**
+Calculating a television channel's target rating point by polling households to see whether they watch (YES) or don't watch (NO) the channel.
+
+<br>
+
+
+```{r, tidy=TRUE}
+#Generating random Binomial deviates
+ax <- seq(1,2000,by = 1)
+# bx <- rbinom(ax,100,0.5)
+
+#dbinom gives the density function
+cx <- dbinom(ax,2000,0.5)
+plot(ax,cx)
+
+#Sum equal to:
+sum(cx)
+
+```
+
+
+```{r, tidy=TRUE}
+#pbinom gives the distribution function
+#Binomial Cumulative Distribution Function
+dx <- pbinom(ax,2000, 0.5)
+plot(dx)
+sum(dx)
+
+```
+
+
+### Normal distribution  
+$Y = { 1/[ σ * sqrt(2π) ] } * e-(x - μ)^2/2σ^2$
+<br>
+
+The distribution of data in a random set of data from independent sources is usually natural. This implies that if you plot a graph with the variable's value on the horizontal axis and the count of the values on the vertical axis, you'll get a bell-shaped curve. The data set's mean is represented by the curve's middle. Fifty percent of the graph values are to the left of the mean, while the other fifty percent are to the right. In mathematics, this is referred to as normal distribution.  
+
+Data is symmetrically distributed with no skew in a normal distribution. When plotted on a graph, the data takes the form of a bell, with most values clustering around a central region and tapering off as they move away from it.
+	
+<br>
+
+The following are the main characteristics of normal distributions that are easy to find in graphs: The mean, median and mode are precisely the same.  
+•	Around the mean, the distribution is symmetric. Half of the values fall below and half above it.  
+•	The mean and standard deviation are two values that can be used to characterize the distribution.   
+
+
+**Example:**
+The population's height is an indicator of normal distribution. The majority of people in a particular population are of average height. The number of people who are taller or shorter than the average height is almost equal, and only a small percentage of people are very tall or short. Height, on the other hand, is not a single trait; it is influenced by a number of genetic and environmental factors.Height, on the other hand, is not a single characteristic; it is influenced by a number of genetic and environmental factors. As a result, it conforms to the normal distribution.
+
+<br>
+
+```{r, echo=FALSE}
+#Normal distribution
+
+avg <- mean(dataset$`Units Sold`)
+jsd <- sd(dataset$`Units Sold`)
+
+```
+
+
+```{r, tidy=TRUE}
+nom <- dnorm(dataset$`Units Sold`,avg,jsd)
+
+cnom <- pnorm(dataset$`Units Sold`,avg,jsd)
+```
+
+```{r}
+#dnorm gives the density
+plot(dataset$`Units Sold`,nom)
+
+```
+
+```{r}
+# pnorm gives the distribution function
+plot(dataset$`Units Sold`,cnom)
+```
+
+
+<br>
+<br>
+
+### The geometric Distribution   
+$P(X = x) = q(x-1)p, where, q = 1 - p$  
+The geometric probability density function extends our understanding of the binomial distribution. Rather than a set number of trials, the experiment in this case, persists until either a success or a failure is achieved.  
+<br>
+
+The geometric distribution is a type of distribution that occurs when the following four conditions are met.  
+•	Each trial has only two outcomes  
+•	The trials are independent  
+•	There is no difference in the likelihood of the outcomes.  
+•	The variable of interest is the number of trials until the first  
+
+
+**Examples**
+A pharmaceutical company is developing a new medication to treat a particular illness with the fewest possible side effects. What are the chances that none of the drugs failed the test, one drug failed the test, two drugs failed the test, and so on, unless they invent a new ideal drug?
+
+
+```{r}
+
+#Geometric distribution
+
+#Generating geometric distribution
+PGZ <- rgeom(1:100,0.7)
+
+PGD <- dgeom(PGZ,0.05)
+plot(density(PGD))
+
+```
+
+<br>
+
+<br>
+
+## Hypothesis testing
+
+<br>
+
+A statistical hypothesis, also known as confirmatory data analysis, is a hypothesis that can be tested by analyzing a mechanism modeled using a series of random variables. Hypothesis testing is a statistical procedure in which an analyst verifies a hypothesis about a population parameter.  
+
+Two separate hypothesis exist. Alternative hypothesis and null hypothesis The analyst's null hypothesis is the hypothesis that he or she thinks is right. The analyst's alternative hypothesis is the one that he or she thinks is incorrect. To put it another way, when the null hypothesis is valid, the alternative hypothesis is effectively false. It implies that these two theories are mutually exclusive. It implies that these two theories are mutually exclusive, with only one of them being right. One of the two theories, however, will always be right.  
+
+<br>
+
+<br>
+
+### Correlation
+
+The correlation coefficient is a statistical indicator of how deep an association exists between two variables' relative movements. The spectrum of values is -1.0 to 1.0. There was an error in the correlation calculation if the measured number was greater than 1.0 or less than -1.0.
+
+A perfect negative correlation is represented by a correlation of -1.0, while a perfect positive correlation is represented by a correlation of 1.0. A correlation of 0.0 indicates that there is no linear relationship between the two variables' movements.
+
+
+```{r, echo=FALSE}
+# source("http://www.sthda.com/upload/rquery_cormat.r")
+# 
+# rquery.cormat(nums,type="full")
+
+jas <- cor(nums)
+jas
+
+#Collegram
+corrplot(jas)
+
+```
+  Title = `Correllation Matrix`
+
+The correlation matrix, also known as a correlation table, is an analytical method that combines correlation coefficients from an x-axis and a y-axis containing various variables.
+The above correlation matrix shows the relationship between the variables below and the table shows the degree of relationship as they interact with each other.
+
+```{r}
+colnames(nums)
+```
+
+
+
+<br>
+
+
+### Chi- Square 
+“A statistician can have his head in an oven and his feet in ice, and he will say that on the average he feels fine”   
+
+The Chi-Square test is a statistical tool for determining if two categorical variables have a significant relationship. The two variables are taken from the same sample. Additionally, these variables are graded as Red/Green, Male/Female, Yes/No etc.
+
+
+**Syntax:**
+
+chisq.test() is a function used to perform test.
+
+**Syntax of a chi-square test:**  
+
+$chisq.test(data)$
+
+Following is the description of the chi-square test parameters:
+
+The input data is a table containing the count values of the variables in the observation.
+In R's native stats package, we use the chisq.test function to perform the chi-square test of freedom. The function expects the contingency table to be in the form of a matrix for this examination. This can involve an additional step, such as combining vectors into a matrix or cross-tabulating counts among factors in a data frame, depending on the data's format.
+
+  H0 : `Item type` and `Order Priority` are not related  
+  H1 : `Item type` and `Order Priority` are related  
+  
+```{r}
+
+#Table 
+table(dataset$`Item Type`,dataset$`Order Priority`)
+#Chi-Square
+chisq.test(dataset$`Item Type`,dataset$`Order Priority`)
+#Critical value 
+qchisq(p=.05, df=33, lower.tail=FALSE)
+
+```
+
+We have a high chi-squared value and a significance level of less than 0.05. As a consequence, we reject the null hypothesis and conclude that `Item Type` and `Order Priority` are related.
+
+<br>
+
+### T-test
+
+The t-test is a statistical test for comparing the means of two groups. It's sometimes used in hypothesis testing to see whether a method or procedure has an impact on the population of interest, or whether two groups differ from one another.  
+  H0 : mu = 262.49  
+  H1 : mu != 262.49
+  
+```{r, tidy=TRUE}
+#One Sample t-test
+t.test(dataset$`Unit Price`)
+
+#Mean
+tx = mean(dataset$`Unit Price`)
+
+n= nrow(dataset)
+#Critical value
+df = n-1
+qt(0.05,df)
+
+```
+
+The P-value below 0.05 we reject the null hypothesis, the true mean is between the interval with a probability of 95%
+
+  
+
+
+<br>
+<br>
+<br>
+<br>
+
+
+## References
+1. Page, P. D., The, D. D. and The, C. D. (2009) 1.3.6.1. What is a Probability Distribution. Available at: <https://www.itl.nist.gov/div898/handbook/eda/section3/eda361.htm>.
+2. ‘Understanding and Choosing the Right Probability Distributions’ (2015) in Advanced Analytical Models. Hoboken, NJ, USA: John Wiley & Sons, Inc., pp. 899–917. doi: 10.1002/9781119197096.app03.
+3. Page, P. D., The, D. D. and The, C. D. (2009) 1.3.6.1. What is a Probability Distribution. Available at: <https://www.itl.nist.gov/div898/handbook/eda/section3/eda361.htm>.  
+4. Chi-Square Test in R | Explore the Examples and Essential concepts! - DataFlair (no date). Available at: <https://data-flair.training/blogs/chi-square-test-in-r/>.   
+5. What are Null hypothesis and alternative hypothesis? – Banking School (no date). Available at: <https://bankingschool.co.in/accounting/what-are-null-hypothesis-and-alternative-hypothesis/>.  
+6. An Introduction to T-Tests | Definitions, Formula and Examples (no date). Available at: <https://www.scribbr.com/statistics/t-test/>.
+7. Binomial Distribution – Definition, Real Life Scenarios, Formula and Properties (no date). Available at: <https://www.vedantu.com/maths/binomial-distribution>.
+8. How to Test for Normality in R : Statistics in R : Data Sharkie (no date). Available at: <https://datasharkie.com/how-to-test-for-normality-in-r/>.
+9. ‘Options: Chunk options and package options {\textbar} knitr’ (no date). Available at: <https://yihui.org/knitr/options/>.
+10. Williams, C. (2020) How to create a correlation matrix with too many variables in R. Available at: <https://www.displayr.com/how-to-create-a-correlation-matrix-in-r/>.
+11. Understanding Distributions using R | by Sowmya Krishnan | Towards Data Science (no date). Available at: <https://towardsdatascience.com/understanding-distributions-using-r-490620c2bb08>.
+12. How to Perform Hypothesis Testing in R using T-tests and μ-Tests - TechVidvan (no date). Available at: <https://techvidvan.com/tutorials/hypothesis-testing-in-r/>.
+
+
+
+
+
+
+
+
+
